@@ -31,12 +31,12 @@ if not os.path.exists(db_name):
   time.sleep(3)
   sys.exit()
 
-# List for username and password pair
+# List containing username - password_plain pairs
 users_to_add = []
 
 while True:
   while True:
-    username = input('Username >>> ')
+    username = input('\nUsername >>> ')
     if username:
       break
 
@@ -44,7 +44,7 @@ while True:
 
   users_to_add.append({'username': username, 'password_plain': password_plain})
   while True:
-    more_users = input('More users to add? [N] >>> ')
+    more_users = input('\nMore users to add? [N] >>> ')
     if more_users.lower() in 'yn':
       break
     print('Error: Wrong input!')
@@ -67,28 +67,38 @@ for user in users_to_add:
 
   # Check whether username exist in db
   query = 'SELECT * FROM "TBLUSER" WHERE "USERNAME" = ?;'
-  c.execute(query, (username, ))
+  c.execute(query, (user['username'], ))
   item = c.fetchone()
 
   if item:
     query_update = 'UPDATE "TBLUSER" SET "PASSWORD" = ? WHERE "USERNAME" = ?;'
-    c.execute(query_update, (password_hash, user['username']))
-    print('DB has been updated...')
+    try:
+      c.execute(query_update, (password_hash, user['username']))
+    except sqlite3.OperationalError as e:
+      print(f'\nError: {e}')
+      time.sleep(2)
+      sys.exit()
+    print(f'User \"{user["username"]}\" password has been updated..')
   else:
     query_insert = 'INSERT INTO "TBLUSER" VALUES (?, 1, 1, ?, "OPERATOR");'
-    c.execute(query_insert, (user['username'], password_hash))
+    try:
+      c.execute(query_insert, (user['username'], password_hash))
+    except sqlite3.OperationalError as e:
+      print(f'\nError: {e}')
+      time.sleep(2)
+      sys.exit()
     print(f'User \"{user["username"]}\" has been added to DB..')
-
-
-# Table
-TOutput = PrettyTable()
-TOutput.field_names = ['Username', 'Password']
-for row in users_to_add:
-  TOutput.add_row([row['username'], row['password_plain']])
-print('\nData added or updated...')
-print(TOutput)
 
 conn.commit()
 conn.close()
 print('Disconnected from DB...')
+
+# Table
+TOutput = PrettyTable()
+TOutput.field_names = ['No', 'Username', 'Password']
+for number, row in enumerate(users_to_add, 1):
+  TOutput.add_row([number, row['username'], row['password_plain']])
+print('\nSummary data list:')
+print(TOutput)
+
 time.sleep(3)
